@@ -1,10 +1,12 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Printer, X, Check, Download, ShoppingBag, ShieldCheck } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '../utils/formatters';
 
 export const ThermalReceiptModal = () => {
   const { activeReceipt, setActiveReceipt } = useStore();
+  const { t } = useLanguage();
 
   if (!activeReceipt) return null;
 
@@ -24,7 +26,7 @@ export const ThermalReceiptModal = () => {
         <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-emerald-400" />
-            <h3 className="font-semibold text-base">80mm Thermal Receipt Generator</h3>
+            <h3 className="font-semibold text-base">{t('receiptTitle')}</h3>
           </div>
           <button
             onClick={() => setActiveReceipt(null)}
@@ -186,7 +188,7 @@ export const ThermalReceiptModal = () => {
         <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
           <div className="text-xs text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Ready for 80mm ESC/POS Thermal Printers</span>
+            <span>{t('printReady')}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -194,14 +196,14 @@ export const ThermalReceiptModal = () => {
               onClick={() => setActiveReceipt(null)}
               className="px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Done
+              {t('done')}
             </button>
             <button
               onClick={handlePrint}
               className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02]"
             >
               <Printer className="w-4 h-4" />
-              <span>Print Receipt (80mm)</span>
+              <span>{t('printReceipt80')}</span>
             </button>
           </div>
         </div>

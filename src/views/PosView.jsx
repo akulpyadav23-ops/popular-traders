@@ -181,7 +181,7 @@ export const PosView = () => {
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Type item name, SKU or brand to log... (Press Enter to add)"
+                placeholder={t('typeToLog')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-24 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
@@ -202,7 +202,7 @@ export const PosView = () => {
                 className="absolute right-2 top-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition"
                 title="Enter to log item"
               >
-                <span>Log</span>
+                <span>{t('logBtn')}</span>
                 <CornerDownLeft className="w-3 h-3" />
               </button>
             </div>
@@ -218,7 +218,7 @@ export const PosView = () => {
               title="Enter custom loose / non-catalog item"
             >
               <FilePlus2 className="w-4 h-4 text-emerald-400" />
-              <span>+ Manual Item</span>
+              <span>{t('manualItem')}</span>
             </button>
           </form>
 
@@ -245,9 +245,9 @@ export const PosView = () => {
           {filteredProducts.length === 0 ? (
             <div className="h-64 flex flex-col items-center justify-center text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 p-6 text-center">
               <Search className="w-10 h-10 text-slate-300 mb-2" />
-              <p className="text-sm font-bold text-slate-700">No catalog product matched "{searchQuery}"</p>
+              <p className="text-sm font-bold text-slate-700">{t('noProductFound')} "{searchQuery}"</p>
               <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                You can add this as a custom manual entry to the bill directly.
+                {t('billEmptyDesc')}
               </p>
               <button
                 onClick={() => {
@@ -257,7 +257,7 @@ export const PosView = () => {
                 className="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add "{searchQuery || 'Custom Item'}" as Manual Entry</span>
+                <span>{t('addAsManual')}</span>
               </button>
             </div>
           ) : (
@@ -330,9 +330,9 @@ export const PosView = () => {
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-sm text-slate-800">Active Bill & Sales Log</h3>
+            <h3 className="font-bold text-sm text-slate-800">{t('activeBill')}</h3>
             <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-              {cart.reduce((s, i) => s + i.qty, 0)} items
+              {cart.reduce((s, i) => s + i.qty, 0)} {t('items')}
             </span>
           </div>
 
@@ -342,7 +342,7 @@ export const PosView = () => {
               className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 hover:underline"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear</span>
+              <span>{t('clearBill')}</span>
             </button>
           )}
         </div>
@@ -352,9 +352,9 @@ export const PosView = () => {
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
               <ShoppingCart className="w-12 h-12 text-slate-200 mb-2 stroke-1" />
-              <p className="text-sm font-semibold text-slate-600">Bill log is empty</p>
+              <p className="text-sm font-semibold text-slate-600">{t('billEmpty')}</p>
               <p className="text-xs text-slate-400 text-center max-w-[200px] mt-1">
-                Type in search to log items or click from catalog
+                {t('billEmptyDesc')}
               </p>
             </div>
           ) : (
@@ -369,7 +369,7 @@ export const PosView = () => {
                       <h5 className="text-xs font-bold text-slate-800 truncate">{item.name}</h5>
                       {item.isCustom && (
                         <span className="text-[9px] font-bold bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded">
-                          Manual
+                          {t('manualBadge')}
                         </span>
                       )}
                     </div>
@@ -428,14 +428,14 @@ export const PosView = () => {
           {/* Bill-Level Discount & Summary */}
           <div className="space-y-1 text-xs">
             <div className="flex justify-between text-slate-600">
-              <span>Subtotal:</span>
+              <span>{t('subtotal')}</span>
               <span className="font-semibold text-slate-800">₹{cartSubtotal.toFixed(2)}</span>
             </div>
 
             <div className="flex justify-between items-center text-slate-600">
               <span className="flex items-center gap-1">
                 <Tag className="w-3 h-3 text-emerald-600" />
-                <span>Bill Discount (₹):</span>
+                <span>{t('billDiscount')}</span>
               </span>
               <input
                 type="number"
@@ -448,7 +448,7 @@ export const PosView = () => {
             </div>
 
             <div className="flex justify-between text-slate-500 text-[11px]">
-              <span>Taxes (GST Inclusive):</span>
+              <span>{t('taxInclusive')}</span>
               <span>₹{cartTaxTotal.toFixed(2)}</span>
             </div>
           </div>
@@ -457,7 +457,7 @@ export const PosView = () => {
           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
             <div>
               <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
-                Total Amount Due
+                {t('totalDue')}
               </span>
               <span className="text-2xl font-black text-emerald-950">
                 ₹{cartGrandTotal.toFixed(2)}
@@ -476,7 +476,7 @@ export const PosView = () => {
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
-            <span>Proceed to Payment</span>
+            <span>{t('proceedPayment')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -490,7 +490,7 @@ export const PosView = () => {
             <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FilePlus2 className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-base">Manual Item Entry to Log</h3>
+                <h3 className="font-bold text-base">{t('manualEntryTitle')}</h3>
               </div>
               <button
                 onClick={() => setManualModalOpen(false)}
@@ -502,11 +502,11 @@ export const PosView = () => {
 
             <form onSubmit={handleAddManualCustomItem} className="p-6 space-y-3.5">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Item / Service Description *</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">{t('itemDescription')}</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Loose Sugar 2kg, Fresh Bakery, Delivery Fee"
+                  placeholder={t('itemDescPlaceholder')}
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
@@ -516,7 +516,7 @@ export const PosView = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Price per Unit (₹) *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">{t('pricePerUnit')}</label>
                   <input
                     type="number"
                     required
@@ -529,7 +529,7 @@ export const PosView = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Quantity *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">{t('quantity')}</label>
                   <input
                     type="number"
                     required
@@ -542,16 +542,16 @@ export const PosView = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Applicable GST Tax Rate</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">{t('gstRate')}</label>
                 <select
                   value={manualTax}
                   onChange={(e) => setManualTax(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium"
                 >
-                  <option value="0">0% (Nil / Exempted Food)</option>
-                  <option value="5">5% (Staples / Groceries)</option>
-                  <option value="12">12% (Packaged Foods)</option>
-                  <option value="18">18% (Household & FMCG)</option>
+                  <option value="0">{t('gst0')}</option>
+                  <option value="5">{t('gst5')}</option>
+                  <option value="12">{t('gst12')}</option>
+                  <option value="18">{t('gst18')}</option>
                 </select>
               </div>
 
@@ -561,13 +561,13 @@ export const PosView = () => {
                   onClick={() => setManualModalOpen(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
                 >
-                  Add to Current Bill
+                  {t('addToBill')}
                 </button>
               </div>
             </form>
@@ -583,8 +583,8 @@ export const PosView = () => {
             {/* Header */}
             <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base">Select Payment Method</h3>
-                <p className="text-xs text-slate-400">Total payable: ₹{cartGrandTotal.toFixed(2)}</p>
+                <h3 className="font-bold text-base">{t('selectPayment')}</h3>
+                <p className="text-xs text-slate-400">{t('totalPayable')} ₹{cartGrandTotal.toFixed(2)}</p>
               </div>
               <button
                 onClick={() => setCheckoutModalOpen(false)}
@@ -597,10 +597,10 @@ export const PosView = () => {
             {/* Payment Method Selector Tabs */}
             <div className="grid grid-cols-4 p-3 bg-slate-100 gap-1.5 border-b border-slate-200">
               {[
-                { id: 'Cash', icon: <Banknote className="w-4 h-4" />, label: 'Cash' },
-                { id: 'UPI', icon: <QrCode className="w-4 h-4" />, label: 'UPI QR' },
-                { id: 'Card', icon: <CreditCard className="w-4 h-4" />, label: 'Card' },
-                { id: 'Udhar', icon: <BookOpen className="w-4 h-4" />, label: 'Udhar' }
+                { id: 'Cash', icon: <Banknote className="w-4 h-4" />, label: t('cash') },
+                { id: 'UPI', icon: <QrCode className="w-4 h-4" />, label: t('upiQr') },
+                { id: 'Card', icon: <CreditCard className="w-4 h-4" />, label: t('card') },
+                { id: 'Udhar', icon: <BookOpen className="w-4 h-4" />, label: t('udhar') }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -625,7 +625,7 @@ export const PosView = () => {
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Cash Tendered by Customer (₹):
+                      {t('cashTendered')}
                     </label>
                     <input
                       type="number"
@@ -652,7 +652,7 @@ export const PosView = () => {
 
                   {/* Change Calculation */}
                   <div className="p-3 bg-slate-100 rounded-xl flex items-center justify-between text-sm">
-                    <span className="text-slate-600 font-medium">Change to Return:</span>
+                    <span className="text-slate-600 font-medium">{t('changeReturn')}</span>
                     <span className="font-extrabold text-emerald-700 text-base">
                       ₹{changeDue.toFixed(2)}
                     </span>
@@ -679,7 +679,7 @@ export const PosView = () => {
 
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1 text-left">
-                      UPI Ref / UTR No. (Optional):
+                      {t('upiRef')}
                     </label>
                     <input
                       type="text"
@@ -709,7 +709,7 @@ export const PosView = () => {
 
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Last 4 Digits of Card:
+                      {t('lastFourCard')}
                     </label>
                     <input
                       type="text"
@@ -728,24 +728,24 @@ export const PosView = () => {
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
                     <div className="font-bold flex items-center gap-1.5 mb-1">
                       <BookOpen className="w-4 h-4 text-amber-700" />
-                      <span>Udhar / Customer Khata Ledger</span>
+                      <span>{t('udhar')} / Customer Khata Ledger</span>
                     </div>
                     <span>Amount will be debited to customer's running credit account.</span>
                   </div>
 
                   <div>
                     <label className="text-xs font-bold text-slate-700 block mb-1">
-                      Select Customer:
+                      {t('selectCustomer')}
                     </label>
                     <select
                       value={selectedCustomerId}
                       onChange={(e) => setSelectedCustomerId(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
                     >
-                      <option value="">-- Choose Existing Customer --</option>
+                      <option value="">{t('chooseCustomer')}</option>
                       {customers.map(c => (
                         <option key={c.id} value={c.id}>
-                          {c.name} (Current Udhar: ₹{c.outstandingBalance})
+                          {c.name} ({t('currentUdhar')}: ₹{c.outstandingBalance})
                         </option>
                       ))}
                     </select>
@@ -754,15 +754,15 @@ export const PosView = () => {
                   {selectedCustomerObj && (
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Credit Limit:</span>
+                        <span className="text-slate-500">{t('creditLimit')}</span>
                         <span className="font-bold text-slate-800">₹{selectedCustomerObj.creditLimit}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Current Outstanding:</span>
+                        <span className="text-slate-500">{t('currentOutstanding')}</span>
                         <span className="font-bold text-amber-700">₹{selectedCustomerObj.outstandingBalance}</span>
                       </div>
                       <div className="flex justify-between border-t border-slate-200 pt-1 font-bold">
-                        <span>New Balance After Bill:</span>
+                        <span>{t('newBalanceAfter')}</span>
                         <span className="text-red-600">
                           ₹{selectedCustomerObj.outstandingBalance + cartGrandTotal}
                         </span>
@@ -780,7 +780,7 @@ export const PosView = () => {
                 onClick={() => setCheckoutModalOpen(false)}
                 className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
               >
-                Cancel
+                {t('cancel')}
               </button>
 
               <button
@@ -788,7 +788,7 @@ export const PosView = () => {
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Generate 80mm Receipt</span>
+                <span>{t('confirmReceipt')}</span>
               </button>
             </div>
 
