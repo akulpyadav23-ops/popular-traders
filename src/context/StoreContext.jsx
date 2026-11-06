@@ -24,7 +24,7 @@ export const useStore = () => {
 // Safe local storage reader helper
 const loadFromStorage = (key, fallback) => {
   try {
-    const item = localStorage.getItem(`grocerease_${key}`);
+    const item = localStorage.getItem(`populartraders_${key}`) || localStorage.getItem(`grocerease_${key}`);
     return item ? JSON.parse(item) : fallback;
   } catch (err) {
     console.error(`Error loading ${key} from storage:`, err);
@@ -36,9 +36,7 @@ export const StoreProvider = ({ children }) => {
   // Store / Auth State
   const [staff, setStaff] = useState(() => loadFromStorage('staff', INITIAL_STAFF));
   const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = loadFromStorage('currentUser', null);
-    if (savedUser) return savedUser;
-    return INITIAL_STAFF[0]; // Default to Admin (Anand Sharma)
+    return loadFromStorage('currentUser', INITIAL_STAFF[0]); // Defaults to Anand Sharma (Admin)
   });
 
   // Core Data States
@@ -50,7 +48,7 @@ export const StoreProvider = ({ children }) => {
   const [priceAuditLogs, setPriceAuditLogs] = useState(() => loadFromStorage('price_audit_logs', INITIAL_PRICE_AUDIT_LOGS));
   const [stockLogs, setStockLogs] = useState(() => loadFromStorage('stock_logs', INITIAL_STOCK_LOGS));
 
-  // Active POS Cart State
+  // Active POS Cart State (Non-GST)
   const [cart, setCart] = useState(() => loadFromStorage('active_cart', []));
   const [billDiscount, setBillDiscount] = useState(0); // in Rupees
 
@@ -62,43 +60,47 @@ export const StoreProvider = ({ children }) => {
 
   // Persist states to LocalStorage
   useEffect(() => {
-    localStorage.setItem('grocerease_products', JSON.stringify(products));
+    localStorage.setItem('populartraders_products', JSON.stringify(products));
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_staff', JSON.stringify(staff));
+    localStorage.setItem('populartraders_staff', JSON.stringify(staff));
   }, [staff]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_currentUser', JSON.stringify(currentUser));
+    if (currentUser) {
+      localStorage.setItem('populartraders_currentUser', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('populartraders_currentUser');
+    }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_attendance', JSON.stringify(attendance));
+    localStorage.setItem('populartraders_attendance', JSON.stringify(attendance));
   }, [attendance]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_leaves', JSON.stringify(leaves));
+    localStorage.setItem('populartraders_leaves', JSON.stringify(leaves));
   }, [leaves]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_customers', JSON.stringify(customers));
+    localStorage.setItem('populartraders_customers', JSON.stringify(customers));
   }, [customers]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_sales', JSON.stringify(sales));
+    localStorage.setItem('populartraders_sales', JSON.stringify(sales));
   }, [sales]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_price_audit_logs', JSON.stringify(priceAuditLogs));
+    localStorage.setItem('populartraders_price_audit_logs', JSON.stringify(priceAuditLogs));
   }, [priceAuditLogs]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_stock_logs', JSON.stringify(stockLogs));
+    localStorage.setItem('populartraders_stock_logs', JSON.stringify(stockLogs));
   }, [stockLogs]);
 
   useEffect(() => {
-    localStorage.setItem('grocerease_active_cart', JSON.stringify(cart));
+    localStorage.setItem('populartraders_active_cart', JSON.stringify(cart));
   }, [cart]);
 
   // Toast helper
@@ -109,7 +111,48 @@ export const StoreProvider = ({ children }) => {
     }, 3500);
   };
 
-  // Auth & RBAC Actions
+  // Helper to clean phone numbers for comparison
+  const normalizePhone = (p) => {
+    if (!p) return '';
+    return p.toString().replace(/\D/g, '').slice(-10);
+  };
+
+  // Phone + Password Authentication (Admin & Worker login)
+  const loginWithPhonePassword = (phoneNumber, password, expectedRole = null) => {
+    const cleanInputPhone = normalizePhone(phoneNumber);
+    if (!cleanInputPhone || !password) {
+      return { success: false, message: 'Please enter phone number and password' };
+    }
+
+    const matched = staff.find(s => {
+      const staffPhone = normalizePhone(s.phone);
+      const phoneMatches = staffPhone === cleanInputPhone;
+      const passMatches = (s.password && s.password === password) || (s.pin && s.pin === password);
+      return phoneMatches && passMatches;
+    });
+
+    if (!matched) {
+      return { success: false, message: 'Invalid phone number or password. Check demo credentials.' };
+    }
+
+    if (expectedRole && matched.role.toLowerCase() !== expectedRole.toLowerCase()) {
+      return {
+        success: false,
+        message: `This account is registered as ${matched.role}. Please log in under the ${matched.role} tab.`
+      };
+    }
+
+    setCurrentUser(matched);
+    showToast(`Welcome back, ${matched.name}! Signed in as ${matched.role}`, 'success');
+    return { success: true, user: matched };
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    clearCart();
+    showToast('Signed out of POPULAR TRADERS portal', 'info');
+  };
+
   const switchUser = (staffId) => {
     const selected = staff.find(s => s.id === staffId);
     if (selected) {
@@ -128,12 +171,11 @@ export const StoreProvider = ({ children }) => {
     return { success: false, message: 'Invalid 4-digit PIN' };
   };
 
-  // Cart Management
+  // Cart Management (Strictly Non-GST)
   const addToCart = (product, qty = 1) => {
-    // Check stock availability
     const availableStock = product.isCustom ? 9999 : (product.stock || 0);
     if (!product.isCustom && availableStock <= 0) {
-      showToast(`${product.name} is completely out of stock!`, 'error');
+      showToast(`${product.name} is out of stock!`, 'error');
       return false;
     }
 
@@ -154,7 +196,6 @@ export const StoreProvider = ({ children }) => {
         price: product.sellingPrice,
         costPrice: product.costPrice || (product.sellingPrice * 0.8),
         barcode: product.barcode || `MAN-${Date.now().toString().slice(-4)}`,
-        gstRate: product.gstRate !== undefined ? product.gstRate : 5,
         unit: product.unit || 'Unit',
         qty: qty,
         lineDiscount: 0,
@@ -197,30 +238,18 @@ export const StoreProvider = ({ children }) => {
     setBillDiscount(0);
   };
 
-  // Cart Calculation Helpers
+  // Cart Calculations (Strictly NO GST)
   const cartSubtotal = cart.reduce((sum, item) => sum + (item.price * item.qty - (item.lineDiscount || 0)), 0);
-  
-  // Tax calculation (inclusive or standard GST breakdown)
-  const cartTaxBreakdown = cart.reduce((breakdown, item) => {
-    const itemTotal = item.price * item.qty - (item.lineDiscount || 0);
-    const rate = item.gstRate || 0;
-    // Calculate tax component: tax = total * rate / (100 + rate) for inclusive retail
-    const taxAmt = rate > 0 ? (itemTotal * rate) / (100 + rate) : 0;
-    breakdown[rate] = (breakdown[rate] || 0) + taxAmt;
-    return breakdown;
-  }, {});
-
-  const cartTaxTotal = Object.values(cartTaxBreakdown).reduce((a, b) => a + b, 0);
   const cartGrandTotal = Math.max(0, Math.round(cartSubtotal - billDiscount));
 
-  // Complete Sale & POS Checkout
+  // Complete Sale & POS Checkout (Strictly Non-GST)
   const completeSale = ({ paymentMode, customerId, customerName, paidAmount }) => {
     if (cart.length === 0) {
       showToast('Cart is empty. Add products before checkout.', 'error');
       return null;
     }
 
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const invoiceNumber = `PT-INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const finalTotal = cartGrandTotal;
     const tendered = Number(paidAmount) || finalTotal;
     const change = Math.max(0, tendered - finalTotal);
@@ -229,7 +258,7 @@ export const StoreProvider = ({ children }) => {
     setProducts(prevProducts =>
       prevProducts.map(prod => {
         const soldItem = cart.find(c => c.id === prod.id);
-        if (soldItem) {
+        if (soldItem && !soldItem.isCustom) {
           const newStock = Math.max(0, prod.stock - soldItem.qty);
           return { ...prod, stock: newStock };
         }
@@ -255,12 +284,12 @@ export const StoreProvider = ({ children }) => {
       );
     }
 
-    // 3. Create Sale Record
+    // 3. Create Non-GST Sale Record
     const newSale = {
       id: invoiceNumber,
       timestamp: new Date().toISOString(),
-      cashierName: currentUser.name,
-      cashierRole: currentUser.role,
+      cashierName: currentUser ? currentUser.name : 'Store Cashier',
+      cashierRole: currentUser ? currentUser.role : 'Worker',
       customerName: assignedCustomerName,
       customerId: customerId || null,
       paymentMode: paymentMode, // Cash, UPI, Card, Udhar
@@ -270,14 +299,12 @@ export const StoreProvider = ({ children }) => {
         price: i.price,
         costPrice: i.costPrice,
         qty: i.qty,
+        unit: i.unit,
         lineDiscount: i.lineDiscount,
-        gstRate: i.gstRate,
         total: i.price * i.qty - (i.lineDiscount || 0)
       })),
       subtotal: cartSubtotal,
       discount: billDiscount,
-      taxTotal: Number(cartTaxTotal.toFixed(2)),
-      taxBreakdown: cartTaxBreakdown,
       grandTotal: finalTotal,
       paidAmount: tendered,
       changeAmount: change
@@ -286,12 +313,12 @@ export const StoreProvider = ({ children }) => {
     setSales(prev => [newSale, ...prev]);
     clearCart();
     setActiveReceipt(newSale);
-    showToast(`Sale recorded successfully! Invoice ${invoiceNumber}`, 'success');
+    showToast(`Bill generated: ${invoiceNumber}`, 'success');
     return newSale;
   };
 
-  // Price Checklist & Admin Price Update
-  const updateProductPrice = (productId, newSellingPrice, reason = 'Market price adjustment') => {
+  // Price Checklist: Update Product Price
+  const updateProductPrice = (productId, newSellingPrice, reason = 'Market price revision') => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
@@ -303,16 +330,13 @@ export const StoreProvider = ({ children }) => {
       return;
     }
 
-    // Recalculate margins
     const oldMargin = calculateMarginPercent(oldPrice, product.costPrice);
     const newMargin = calculateMarginPercent(newPrice, product.costPrice);
 
-    // Update product
     setProducts(prev =>
       prev.map(p => (p.id === productId ? { ...p, sellingPrice: newPrice } : p))
     );
 
-    // Create Audit Log
     const newAuditLog = {
       id: `AUD-${Date.now().toString().slice(-4)}`,
       timestamp: new Date().toLocaleString('en-IN', {
@@ -330,16 +354,16 @@ export const StoreProvider = ({ children }) => {
       costPrice: product.costPrice,
       oldMargin: `${oldMargin}%`,
       newMargin: `${newMargin}%`,
-      changedBy: `${currentUser.name} (${currentUser.role})`,
-      reason: reason || 'Manual Admin Revision'
+      changedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Admin',
+      reason: reason || 'Price Update'
     };
 
     setPriceAuditLogs(prev => [newAuditLog, ...prev]);
     showToast(`Updated price for ${product.name} to ₹${newPrice}`, 'success');
   };
 
-  // Inventory Tracker: Stock In
-  const stockIn = ({ productId, qty, batch, supplier, unitCost, notes }) => {
+  // Inventory: Stock In
+  const stockIn = ({ productId, qty, batch, supplier, unitCost, retailPrice, notes }) => {
     const quantity = Number(qty);
     if (isNaN(quantity) || quantity <= 0) {
       showToast('Invalid quantity entered', 'error');
@@ -349,6 +373,9 @@ export const StoreProvider = ({ children }) => {
     const prod = products.find(p => p.id === productId);
     if (!prod) return;
 
+    const newCost = unitCost ? Number(unitCost) : prod.costPrice;
+    const newSelling = retailPrice ? Number(retailPrice) : prod.sellingPrice;
+
     setProducts(prev =>
       prev.map(p =>
         p.id === productId
@@ -357,11 +384,37 @@ export const StoreProvider = ({ children }) => {
               stock: p.stock + quantity,
               batch: batch || p.batch,
               supplier: supplier || p.supplier,
-              costPrice: unitCost ? Number(unitCost) : p.costPrice
+              costPrice: newCost,
+              sellingPrice: newSelling
             }
           : p
       )
     );
+
+    // If retail price was updated with Stock In, log it to Price Audit Log
+    if (retailPrice && Number(retailPrice) !== prod.sellingPrice) {
+      const newAuditLog = {
+        id: `AUD-${Date.now().toString().slice(-4)}`,
+        timestamp: new Date().toLocaleString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
+        productId: prod.id,
+        productName: prod.name,
+        oldPrice: prod.sellingPrice,
+        newPrice: Number(retailPrice),
+        costPrice: newCost,
+        oldMargin: `${calculateMarginPercent(prod.sellingPrice, prod.costPrice)}%`,
+        newMargin: `${calculateMarginPercent(Number(retailPrice), newCost)}%`,
+        changedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'Admin',
+        reason: `Auto-updated on Stock-In from ${supplier || 'Supplier'}`
+      };
+      setPriceAuditLogs(prev => [newAuditLog, ...prev]);
+    }
 
     const newLog = {
       id: `STK-IN-${Date.now().toString().slice(-4)}`,
@@ -379,23 +432,23 @@ export const StoreProvider = ({ children }) => {
       qty: quantity,
       batch: batch || prod.batch,
       supplier: supplier || prod.supplier,
-      unitCost: unitCost || prod.costPrice,
+      unitCost: newCost,
       notes: notes || 'Stock replenishment',
-      recordedBy: currentUser.name
+      recordedBy: currentUser ? currentUser.name : 'Admin'
     };
 
     setStockLogs(prev => [newLog, ...prev]);
-    showToast(`Successfully added ${quantity} units of ${prod.name}`, 'success');
+    showToast(`Added ${quantity} units of ${prod.name}`, 'success');
   };
 
-  // Inventory Tracker: Stock Out (Loss, Expiry, Damage)
+  // Inventory: Stock Out (Damage, Expiry, Loss)
   const stockOut = ({ productId, qty, reason, notes }) => {
     const quantity = Number(qty);
     const prod = products.find(p => p.id === productId);
     if (!prod) return;
 
     if (quantity > prod.stock) {
-      showToast(`Cannot write off ${quantity} units. Current stock is only ${prod.stock}.`, 'error');
+      showToast(`Cannot deduct ${quantity} units. Only ${prod.stock} in stock.`, 'error');
       return;
     }
 
@@ -420,16 +473,152 @@ export const StoreProvider = ({ children }) => {
       productName: prod.name,
       qty: quantity,
       batch: prod.batch,
-      reason: reason || 'Damage / Expiry',
-      notes: notes || 'Audited write-off',
-      recordedBy: currentUser.name
+      reason: reason || 'Damage / Transit Leakage',
+      notes: notes || 'Stock out adjustment',
+      recordedBy: currentUser ? currentUser.name : 'Admin'
     };
 
     setStockLogs(prev => [newLog, ...prev]);
-    showToast(`Audited removal of ${quantity} units of ${prod.name}`, 'warning');
+    showToast(`Deducted ${quantity} units of ${prod.name}`, 'warning');
   };
 
-  // Manual search entry into stock movement log
+  // Intelligent OCR Batch Import into Stock & Dynamic Price List
+  const importOcrStockInBatch = ({ supplier, invoiceNumber, invoiceDate, items }) => {
+    if (!items || items.length === 0) {
+      showToast('No parsed invoice line items to import', 'error');
+      return false;
+    }
+
+    const timestampStr = new Date().toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const newLogs = [];
+    const newAuditLogs = [];
+    let updatedProductsCount = 0;
+    let newProductsCount = 0;
+
+    setProducts(prevProducts => {
+      let currentProducts = [...prevProducts];
+
+      items.forEach((item, index) => {
+        const qty = Number(item.qty) || 1;
+        const costPrice = Number(item.costPrice) || 0;
+        const retailPrice = Number(item.retailPrice) || (costPrice > 0 ? Math.round(costPrice * 1.2) : 50);
+        const itemName = item.name.trim();
+
+        // Check if product exists in catalog (by name or barcode match)
+        const existingIdx = currentProducts.findIndex(p =>
+          p.name.toLowerCase().includes(itemName.toLowerCase()) ||
+          itemName.toLowerCase().includes(p.name.toLowerCase()) ||
+          (item.barcode && p.barcode === item.barcode)
+        );
+
+        if (existingIdx !== -1) {
+          const existing = currentProducts[existingIdx];
+          const oldSelling = existing.sellingPrice;
+
+          currentProducts[existingIdx] = {
+            ...existing,
+            stock: existing.stock + qty,
+            costPrice: costPrice > 0 ? costPrice : existing.costPrice,
+            sellingPrice: retailPrice > 0 ? retailPrice : existing.sellingPrice,
+            batch: item.batch || `OCR-${invoiceNumber || Date.now().toString().slice(-4)}`,
+            supplier: supplier || existing.supplier
+          };
+
+          updatedProductsCount++;
+
+          // If retail price updated, create price audit log
+          if (retailPrice > 0 && retailPrice !== oldSelling) {
+            newAuditLogs.push({
+              id: `AUD-${Date.now().toString().slice(-4)}-${index}`,
+              timestamp: timestampStr,
+              productId: existing.id,
+              productName: existing.name,
+              oldPrice: oldSelling,
+              newPrice: retailPrice,
+              costPrice: costPrice,
+              oldMargin: `${calculateMarginPercent(oldSelling, existing.costPrice)}%`,
+              newMargin: `${calculateMarginPercent(retailPrice, costPrice)}%`,
+              changedBy: currentUser ? `${currentUser.name} (${currentUser.role})` : 'OCR Auto-Scan',
+              reason: `OCR Bill Inward: Inv #${invoiceNumber || 'N/A'} from ${supplier || 'Supplier'}`
+            });
+          }
+
+          newLogs.push({
+            id: `STK-OCR-${Date.now().toString().slice(-4)}-${index}`,
+            type: 'STOCK_IN',
+            timestamp: timestampStr,
+            productId: existing.id,
+            productName: existing.name,
+            qty: qty,
+            batch: item.batch || `OCR-${invoiceNumber || 'AUTO'}`,
+            supplier: supplier || 'OCR Scanned Supplier',
+            unitCost: costPrice,
+            notes: `Auto-parsed from invoice #${invoiceNumber || '—'}`,
+            recordedBy: currentUser ? currentUser.name : 'OCR Scan'
+          });
+        } else {
+          // Add as new catalog product!
+          const newProdId = `PROD-${Date.now().toString().slice(-4)}${index}`;
+          const newProduct = {
+            id: newProdId,
+            barcode: item.barcode || `890${Date.now().toString().slice(-10)}`,
+            name: itemName,
+            category: item.category || 'Grocery & FMCG',
+            costPrice: costPrice,
+            sellingPrice: retailPrice,
+            stock: qty,
+            unit: item.unit || 'Pack',
+            minThreshold: 10,
+            supplier: supplier || 'Scanned Distributor',
+            batch: item.batch || `OCR-${invoiceNumber || 'NEW'}`,
+            expiryDate: item.expiryDate || '2027-12-31'
+          };
+
+          currentProducts.push(newProduct);
+          newProductsCount++;
+
+          newLogs.push({
+            id: `STK-OCR-${Date.now().toString().slice(-4)}-${index}`,
+            type: 'STOCK_IN',
+            timestamp: timestampStr,
+            productId: newProdId,
+            productName: itemName,
+            qty: qty,
+            batch: newProduct.batch,
+            supplier: supplier || 'OCR Scanned Supplier',
+            unitCost: costPrice,
+            notes: `New SKU auto-created from invoice #${invoiceNumber || '—'}`,
+            recordedBy: currentUser ? currentUser.name : 'OCR Scan'
+          });
+        }
+      });
+
+      return currentProducts;
+    });
+
+    if (newLogs.length > 0) {
+      setStockLogs(prev => [...newLogs, ...prev]);
+    }
+    if (newAuditLogs.length > 0) {
+      setPriceAuditLogs(prev => [...newAuditLogs, ...prev]);
+    }
+
+    showToast(
+      `OCR Bill Inward Complete! Updated ${updatedProductsCount} items, created ${newProductsCount} new SKUs.`,
+      'success'
+    );
+    return true;
+  };
+
+  // Manual stock log
   const addManualStockLog = ({ type, productName, qty, reason, notes, batch, supplier, unitCost }) => {
     const quantity = Number(qty) || 1;
     const newLog = {
@@ -450,24 +639,25 @@ export const StoreProvider = ({ children }) => {
       supplier: supplier || 'Store Operation',
       unitCost: Number(unitCost) || 0,
       reason: reason || 'Manual Log Entry',
-      notes: notes || 'Direct manual search entry to log',
-      recordedBy: currentUser.name
+      notes: notes || 'Direct manual entry',
+      recordedBy: currentUser ? currentUser.name : 'Store Staff'
     };
 
     setStockLogs(prev => [newLog, ...prev]);
-    showToast(`Logged manual entry: ${productName} (${type === 'STOCK_IN' ? '+' : '-'}${quantity})`, 'success');
+    showToast(`Logged: ${productName} (${type === 'STOCK_IN' ? '+' : '-'}${quantity})`, 'success');
   };
 
-  // Staff Attendance: Clock In & Clock Out
+  // Staff Attendance: Clock In & Out
   const clockIn = (staffId) => {
-    const staffMember = staff.find(s => s.id === staffId);
+    const targetId = staffId || (currentUser ? currentUser.id : null);
+    const staffMember = staff.find(s => s.id === targetId);
     if (!staffMember) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
     const nowTimeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
     setAttendance(prev => {
-      const existing = prev.find(a => a.staffId === staffId && a.date === todayStr);
+      const existing = prev.find(a => a.staffId === staffMember.id && a.date === todayStr);
       if (existing) {
         showToast(`${staffMember.name} already clocked in today at ${existing.checkInTime}`, 'info');
         return prev;
@@ -491,14 +681,15 @@ export const StoreProvider = ({ children }) => {
   };
 
   const clockOut = (staffId) => {
-    const staffMember = staff.find(s => s.id === staffId);
+    const targetId = staffId || (currentUser ? currentUser.id : null);
+    const staffMember = staff.find(s => s.id === targetId);
     if (!staffMember) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
     const nowTimeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
     setAttendance(prev => {
-      const record = prev.find(a => a.staffId === staffId && a.date === todayStr);
+      const record = prev.find(a => a.staffId === staffMember.id && a.date === todayStr);
       if (!record) {
         showToast(`No check-in record found for ${staffMember.name} today`, 'error');
         return prev;
@@ -508,19 +699,16 @@ export const StoreProvider = ({ children }) => {
         return prev;
       }
 
-      // Calculate approximate hours worked (default 8 if quick demo)
-      const hours = record.hoursWorked > 0 ? record.hoursWorked : 7.5;
-
       showToast(`Clocked out: ${staffMember.name} at ${nowTimeStr}`, 'info');
       return prev.map(a =>
         a.id === record.id
-          ? { ...a, checkOutTime: nowTimeStr, hoursWorked: hours }
+          ? { ...a, checkOutTime: nowTimeStr, hoursWorked: 8.0 }
           : a
       );
     });
   };
 
-  // Leave Management
+  // Leaves
   const submitLeaveRequest = ({ staffId, startDate, endDate, days, reason }) => {
     const member = staff.find(s => s.id === staffId);
     if (!member) return;
@@ -539,7 +727,7 @@ export const StoreProvider = ({ children }) => {
     };
 
     setLeaves(prev => [newLeave, ...prev]);
-    showToast(`Leave application submitted for ${member.name}`, 'success');
+    showToast(`Leave request submitted for ${member.name}`, 'success');
   };
 
   const updateLeaveStatus = (leaveId, status) => {
@@ -549,7 +737,7 @@ export const StoreProvider = ({ children }) => {
     showToast(`Leave request ${status.toLowerCase()}`, 'info');
   };
 
-  // Customer Udhar Payment Settlement
+  // Customer Udhar Settlement
   const settleCustomerCredit = (customerId, amount, paymentMode = 'Cash', notes = '') => {
     const payAmt = Number(amount);
     if (isNaN(payAmt) || payAmt <= 0) {
@@ -571,10 +759,9 @@ export const StoreProvider = ({ children }) => {
       })
     );
 
-    showToast(`Recorded repayment of ₹${payAmt} for customer!`, 'success');
+    showToast(`Collected ₹${payAmt} repayment!`, 'success');
   };
 
-  // Add new customer
   const addCustomer = ({ name, phone, creditLimit }) => {
     const newCust = {
       id: `CUST-${Date.now().toString().slice(-4)}`,
@@ -588,9 +775,20 @@ export const StoreProvider = ({ children }) => {
     showToast(`Added customer ${name}`, 'success');
   };
 
-  // Reset database back to default seed data
+  // Update staff member wage/details
+  const updateStaffDetails = (staffId, updatedFields) => {
+    setStaff(prev =>
+      prev.map(s => (s.id === staffId ? { ...s, ...updatedFields } : s))
+    );
+    if (currentUser && currentUser.id === staffId) {
+      setCurrentUser(prev => ({ ...prev, ...updatedFields }));
+    }
+    showToast('Staff record updated successfully', 'success');
+  };
+
+  // Factory reset
   const resetDatabase = () => {
-    if (window.confirm('Reset all GrocerEase data back to factory demo defaults?')) {
+    if (window.confirm('Reset all POPULAR TRADERS data back to initial seed defaults?')) {
       localStorage.clear();
       setProducts(INITIAL_PRODUCTS);
       setStaff(INITIAL_STAFF);
@@ -603,7 +801,7 @@ export const StoreProvider = ({ children }) => {
       setStockLogs(INITIAL_STOCK_LOGS);
       setCart([]);
       setBillDiscount(0);
-      showToast('Database reset to default demo dataset!', 'info');
+      showToast('Database reset to defaults!', 'info');
     }
   };
 
@@ -613,21 +811,27 @@ export const StoreProvider = ({ children }) => {
         // Auth & Staff
         staff,
         currentUser,
+        loginWithPhonePassword,
+        logout,
         switchUser,
         loginWithPin,
-        
+        updateStaffDetails,
+        isAdmin: currentUser?.role === 'Admin',
+        isWorker: currentUser?.role === 'Worker',
+
         // Products & Pricing
         products,
         updateProductPrice,
         priceAuditLogs,
 
-        // Inventory & Stocks
+        // Inventory & Stocks (with OCR Inward)
         stockLogs,
         stockIn,
         stockOut,
         addManualStockLog,
+        importOcrStockInBatch,
 
-        // Cart & POS
+        // Cart & POS (Strictly Non-GST)
         cart,
         addToCart,
         updateCartQty,
@@ -637,8 +841,6 @@ export const StoreProvider = ({ children }) => {
         setBillDiscount,
         clearCart,
         cartSubtotal,
-        cartTaxTotal,
-        cartTaxBreakdown,
         cartGrandTotal,
         completeSale,
         sales,

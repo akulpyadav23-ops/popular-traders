@@ -41,7 +41,7 @@ export const StaffAttendanceView = ({ onOpenPinPad }) => {
   const [leaveEndDate, setLeaveEndDate] = useState('');
   const [leaveReason, setLeaveReason] = useState('');
 
-  const isAdmin = currentUser.role === 'Admin';
+  const isAdmin = currentUser?.role === 'Admin';
   const pendingLeaves = leaves.filter(l => l.status === 'Pending').length;
 
   const handleApplyLeaveSubmit = (e) => {

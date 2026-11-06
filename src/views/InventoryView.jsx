@@ -16,10 +16,13 @@ import {
   X,
   CheckCircle2,
   FileEdit,
-  FilePlus2
+  FilePlus2,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 import { formatCurrency, getStockStatus } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
+import { CameraOcrModal } from '../components/CameraOcrModal';
 
 export const InventoryView = () => {
   const { products, stockLogs, stockIn, stockOut, addManualStockLog, currentUser } = useStore();
@@ -28,6 +31,9 @@ export const InventoryView = () => {
   const [activeSubTab, setActiveSubTab] = useState('CATALOG'); // CATALOG or LOGS
   const [searchQuery, setSearchQuery] = useState('');
   const [filterThreshold, setFilterThreshold] = useState('ALL'); // ALL, CRITICAL (<5), WARNING (<15), HEALTHY (>=15)
+
+  // Camera OCR Inward Modal State
+  const [ocrModalOpen, setOcrModalOpen] = useState(false);
 
   // Log Search & Filter State
   const [logSearchQuery, setLogSearchQuery] = useState('');
@@ -40,6 +46,7 @@ export const InventoryView = () => {
   const [inBatch, setInBatch] = useState('');
   const [inSupplier, setInSupplier] = useState('');
   const [inCost, setInCost] = useState('');
+  const [inRetailPrice, setInRetailPrice] = useState('');
   const [inNotes, setInNotes] = useState('');
 
   // Stock Out Modal
@@ -108,6 +115,7 @@ export const InventoryView = () => {
       batch: inBatch,
       supplier: inSupplier,
       unitCost: inCost,
+      retailPrice: inRetailPrice,
       notes: inNotes
     });
     setStockInModalOpen(false);
@@ -116,6 +124,7 @@ export const InventoryView = () => {
     setInBatch('');
     setInSupplier('');
     setInCost('');
+    setInRetailPrice('');
     setInNotes('');
   };
 
@@ -189,17 +198,26 @@ export const InventoryView = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Scan Supplier Bill (Camera OCR) */}
+          <button
+            onClick={() => setOcrModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-[#7b977e] hover:bg-[#67806a] text-white rounded-xl text-xs font-bold shadow-md shadow-[#7b977e]/20 transition active:scale-98 cursor-pointer"
+          >
+            <Camera className="w-4 h-4" />
+            <span>{t('scanSupplierBill')}</span>
+          </button>
+
           <button
             onClick={() => setStockInModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircle className="w-4 h-4 text-[#7b977e]" />
             <span>{t('stockInPurchase')}</span>
           </button>
 
           <button
             onClick={() => setStockOutModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
           >
             <MinusCircle className="w-4 h-4" />
             <span>{t('stockOutLoss')}</span>
@@ -207,9 +225,9 @@ export const InventoryView = () => {
 
           <button
             onClick={handleExportInventory}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <FileSpreadsheet className="w-4 h-4 text-[#7b977e]" />
             <span>{t('exportCsv')}</span>
           </button>
         </div>
@@ -631,7 +649,7 @@ export const InventoryView = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">{t('qtyReceived')}</label>
                   <input
@@ -653,6 +671,19 @@ export const InventoryView = () => {
                     value={inCost}
                     onChange={(e) => setInCost(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    {t('sellingPrice')} (Price Book)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    placeholder="Auto updates price list"
+                    value={inRetailPrice}
+                    onChange={(e) => setInRetailPrice(e.target.value)}
+                    className="w-full px-3 py-2 bg-emerald-50 border border-[#7b977e]/40 rounded-xl text-xs font-extrabold text-[#344336]"
                   />
                 </div>
               </div>
@@ -804,6 +835,12 @@ export const InventoryView = () => {
           </div>
         </div>
       )}
+
+      {/* Camera OCR Bill Scanner Modal */}
+      <CameraOcrModal
+        isOpen={ocrModalOpen}
+        onClose={() => setOcrModalOpen(false)}
+      />
 
     </div>
   );

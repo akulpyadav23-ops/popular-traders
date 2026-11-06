@@ -12,13 +12,12 @@ import {
   Banknote,
   BookOpen,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
-  AlertCircle,
   X,
   Receipt,
   FilePlus2,
-  CornerDownLeft
+  CornerDownLeft,
+  ShieldCheck
 } from 'lucide-react';
 import { formatCurrency, getStockStatus } from '../utils/formatters';
 import { useLanguage } from '../context/LanguageContext';
@@ -35,7 +34,6 @@ export const PosView = () => {
     setBillDiscount,
     clearCart,
     cartSubtotal,
-    cartTaxTotal,
     cartGrandTotal,
     completeSale,
     customers,
@@ -60,7 +58,6 @@ export const PosView = () => {
   const [manualName, setManualName] = useState('');
   const [manualPrice, setManualPrice] = useState('');
   const [manualQty, setManualQty] = useState('1');
-  const [manualTax, setManualTax] = useState('5');
 
   const searchInputRef = useRef(null);
 
@@ -100,7 +97,7 @@ export const PosView = () => {
     }
   };
 
-  // Add custom manual item directly to the bill/log
+  // Add custom manual item directly to the bill/log (Strictly Non-GST)
   const handleAddManualCustomItem = (e) => {
     e.preventDefault();
     if (!manualName.trim() || !manualPrice) return;
@@ -112,7 +109,6 @@ export const PosView = () => {
       costPrice: Number(manualPrice) * 0.8,
       stock: 9999,
       unit: 'Custom',
-      gstRate: Number(manualTax) || 0,
       isCustom: true
     };
 
@@ -121,13 +117,13 @@ export const PosView = () => {
     setManualName('');
     setManualPrice('');
     setManualQty('1');
-    showToast(`Added manual item to bill log: ${customProduct.name}`, 'success');
+    showToast(`Added item to bill: ${customProduct.name}`, 'success');
   };
 
   // Open checkout and default tendered amount to grand total
   const handleOpenCheckout = () => {
     if (cart.length === 0) {
-      showToast('Cart is empty. Add products to bill first.', 'error');
+      showToast('Bill is empty. Add items first.', 'error');
       return;
     }
     setTenderedAmount(cartGrandTotal.toString());
@@ -138,7 +134,7 @@ export const PosView = () => {
     let customerName = 'Walk-in Customer';
     if (paymentMode === 'Udhar') {
       if (!selectedCustomerId) {
-        showToast('Please select a customer for Udhar / Store Credit.', 'error');
+        showToast('Please select a customer account for Udhar / Credit.', 'error');
         return;
       }
       const cust = customers.find(c => c.id === selectedCustomerId);
@@ -168,12 +164,12 @@ export const PosView = () => {
   const changeDue = Math.max(0, (Number(tenderedAmount) || 0) - cartGrandTotal);
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden bg-slate-50">
+    <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden bg-slate-50 font-sans">
       
       {/* Left Area: Product Catalog Grid & Manual Search Entry */}
       <div className="flex-1 flex flex-col h-full overflow-hidden p-4 sm:p-6 lg:border-r border-slate-200">
         
-        {/* Top Manual Search Entry Bar */}
+        {/* Top Search Entry Bar */}
         <div className="space-y-3 mb-4">
           <form onSubmit={handleManualSearchSubmit} className="flex gap-2">
             <div className="relative flex-1">
@@ -184,14 +180,14 @@ export const PosView = () => {
                 placeholder={t('typeToLog')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-24 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
+                className="w-full pl-10 pr-24 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#7b977e] shadow-xs"
               />
               
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-12 top-3 text-slate-400 hover:text-slate-600"
+                  className="absolute right-14 top-3 text-slate-400 hover:text-slate-600"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -199,25 +195,25 @@ export const PosView = () => {
 
               <button
                 type="submit"
-                className="absolute right-2 top-1.5 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition"
-                title="Enter to log item"
+                className="absolute right-2 top-1.5 px-3 py-1 bg-[#7b977e] hover:bg-[#67806a] text-white rounded-xl text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                title="Press Enter to add to bill"
               >
                 <span>{t('logBtn')}</span>
                 <CornerDownLeft className="w-3 h-3" />
               </button>
             </div>
             
-            {/* Direct Manual Entry Button */}
+            {/* Direct Manual Item Entry Button */}
             <button
               type="button"
               onClick={() => {
                 setManualName(searchQuery);
                 setManualModalOpen(true);
               }}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0"
-              title="Enter custom loose / non-catalog item"
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition shrink-0 cursor-pointer"
+              title="Add loose or custom item"
             >
-              <FilePlus2 className="w-4 h-4 text-emerald-400" />
+              <FilePlus2 className="w-4 h-4 text-[#7b977e]" />
               <span>{t('manualItem')}</span>
             </button>
           </form>
@@ -228,9 +224,9 @@ export const PosView = () => {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-[#7b977e] text-white shadow-xs'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
@@ -254,7 +250,7 @@ export const PosView = () => {
                   setManualName(searchQuery);
                   setManualModalOpen(true);
                 }}
-                className="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                className="mt-3 px-4 py-2 bg-[#7b977e] hover:bg-[#67806a] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{t('addAsManual')}</span>
@@ -273,10 +269,10 @@ export const PosView = () => {
                     className={`bg-white rounded-2xl p-3 border transition-all flex flex-col justify-between group relative select-none ${
                       isOutOfStock
                         ? 'opacity-50 cursor-not-allowed border-slate-200'
-                        : 'hover:shadow-md hover:border-emerald-300 border-slate-200 cursor-pointer active:scale-98'
+                        : 'hover:shadow-md hover:border-[#7b977e] border-slate-200 cursor-pointer active:scale-98'
                     }`}
                   >
-                    {/* Stock Alert Badge */}
+                    {/* Stock Badge */}
                     <div className="flex items-center justify-between gap-1 mb-2">
                       <span className="text-[10px] font-mono font-medium text-slate-400 truncate">
                         {product.id}
@@ -288,28 +284,28 @@ export const PosView = () => {
 
                     {/* Product Name */}
                     <div className="mb-2">
-                      <h4 className="text-xs font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-emerald-700 transition">
+                      <h4 className="text-xs font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-[#546956] transition">
                         {product.name}
                       </h4>
                       <p className="text-[10px] text-slate-400 truncate mt-0.5">{product.category}</p>
                     </div>
 
-                    {/* Price and Add button */}
+                    {/* Price & Add to Bill */}
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-auto">
                       <div>
                         <span className="text-sm font-extrabold text-slate-900">
                           ₹{product.sellingPrice}
                         </span>
-                        <span className="text-[10px] text-slate-400 block font-normal">
-                          GST {product.gstRate}%
+                        <span className="text-[9px] text-slate-400 block font-normal">
+                          Per {product.unit}
                         </span>
                       </div>
 
                       <button
                         type="button"
                         disabled={isOutOfStock}
-                        className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center transition shadow-xs"
-                        title="Click to log to bill"
+                        className="w-8 h-8 rounded-xl bg-emerald-50 text-[#546956] group-hover:bg-[#7b977e] group-hover:text-white flex items-center justify-center transition shadow-xs cursor-pointer"
+                        title="Click to add to bill"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
@@ -323,15 +319,15 @@ export const PosView = () => {
 
       </div>
 
-      {/* Right Area: Active Bill & Sales Log */}
+      {/* Right Area: Active Non-GST Sale Bill */}
       <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 border-slate-200 flex flex-col h-full shadow-lg lg:shadow-none">
         
         {/* Cart Header */}
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-emerald-600" />
+            <ShoppingCart className="w-5 h-5 text-[#7b977e]" />
             <h3 className="font-bold text-sm text-slate-800">{t('activeBill')}</h3>
-            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold bg-[#7b977e]/20 text-[#344336] px-2 py-0.5 rounded-full">
               {cart.reduce((s, i) => s + i.qty, 0)} {t('items')}
             </span>
           </div>
@@ -339,7 +335,7 @@ export const PosView = () => {
           {cart.length > 0 && (
             <button
               onClick={clearCart}
-              className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 hover:underline"
+              className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>{t('clearBill')}</span>
@@ -347,7 +343,7 @@ export const PosView = () => {
           )}
         </div>
 
-        {/* Cart Items List */}
+        {/* Cart Items List - Strictly Non-GST */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
@@ -374,12 +370,12 @@ export const PosView = () => {
                       )}
                     </div>
                     <div className="text-[10px] text-slate-500 font-mono">
-                      ₹{item.price} each • GST {item.gstRate}%
+                      ₹{item.price} per {item.unit || 'unit'}
                     </div>
                   </div>
                   <button
                     onClick={() => removeFromCart(item.id)}
-                    className="text-slate-400 hover:text-red-600 p-1 rounded-lg transition"
+                    className="text-slate-400 hover:text-red-600 p-1 rounded-lg transition cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -390,7 +386,7 @@ export const PosView = () => {
                   <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 px-2 py-1">
                     <button
                       onClick={() => updateCartQty(item.id, item.qty - 1)}
-                      className="text-slate-500 hover:text-slate-800 transition"
+                      className="text-slate-500 hover:text-slate-800 transition cursor-pointer"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
@@ -399,7 +395,7 @@ export const PosView = () => {
                     </span>
                     <button
                       onClick={() => updateCartQty(item.id, item.qty + 1)}
-                      className="text-slate-500 hover:text-slate-800 transition"
+                      className="text-slate-500 hover:text-slate-800 transition cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -411,7 +407,7 @@ export const PosView = () => {
                       ₹{(item.price * item.qty - (item.lineDiscount || 0)).toFixed(2)}
                     </div>
                     {item.lineDiscount > 0 && (
-                      <div className="text-[9px] text-emerald-600 font-medium">
+                      <div className="text-[9px] text-[#546956] font-medium">
                         -₹{item.lineDiscount} off
                       </div>
                     )}
@@ -422,7 +418,7 @@ export const PosView = () => {
           )}
         </div>
 
-        {/* Cart Calculations & Bill Footer */}
+        {/* Cart Calculations & Bill Footer - Strictly NO GST */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2.5">
           
           {/* Bill-Level Discount & Summary */}
@@ -434,7 +430,7 @@ export const PosView = () => {
 
             <div className="flex justify-between items-center text-slate-600">
               <span className="flex items-center gap-1">
-                <Tag className="w-3 h-3 text-emerald-600" />
+                <Tag className="w-3 h-3 text-[#7b977e]" />
                 <span>{t('billDiscount')}</span>
               </span>
               <input
@@ -443,27 +439,27 @@ export const PosView = () => {
                 value={billDiscount || ''}
                 placeholder="0"
                 onChange={(e) => setBillDiscount(Math.max(0, Number(e.target.value) || 0))}
-                className="w-20 px-2 py-1 bg-white border border-slate-300 rounded-lg text-right font-bold text-xs focus:ring-1 focus:ring-emerald-500"
+                className="w-20 px-2 py-1 bg-white border border-slate-300 rounded-lg text-right font-bold text-xs focus:ring-1 focus:ring-[#7b977e]"
               />
             </div>
 
-            <div className="flex justify-between text-slate-500 text-[11px]">
-              <span>{t('taxInclusive')}</span>
-              <span>₹{cartTaxTotal.toFixed(2)}</span>
+            <div className="flex justify-between text-slate-400 text-[10px] pt-0.5">
+              <span>{t('nonGstNotice')}</span>
+              <span className="font-medium text-[#546956]">Zero Tax Added</span>
             </div>
           </div>
 
           {/* Grand Total */}
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between">
+          <div className="p-3 bg-emerald-50/60 border border-[#7b977e]/30 rounded-2xl flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+              <span className="text-[10px] font-bold text-[#344336] uppercase tracking-wider block">
                 {t('totalDue')}
               </span>
-              <span className="text-2xl font-black text-emerald-950">
+              <span className="text-2xl font-black text-slate-900">
                 ₹{cartGrandTotal.toFixed(2)}
               </span>
             </div>
-            <Receipt className="w-8 h-8 text-emerald-600/40" />
+            <Receipt className="w-8 h-8 text-[#7b977e]/40" />
           </div>
 
           {/* Checkout Button */}
@@ -472,7 +468,7 @@ export const PosView = () => {
             disabled={cart.length === 0}
             className={`w-full py-3.5 rounded-2xl font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all ${
               cart.length > 0
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer hover:shadow-emerald-600/25 active:scale-[0.99]'
+                ? 'bg-[#7b977e] hover:bg-[#67806a] text-white cursor-pointer hover:shadow-[#7b977e]/25 active:scale-[0.99]'
                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
             }`}
           >
@@ -483,18 +479,18 @@ export const PosView = () => {
 
       </div>
 
-      {/* Manual Custom Item Entry Modal Dialog */}
+      {/* Manual Custom Item Entry Modal Dialog (Strictly Non-GST) */}
       {manualModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+            <div className="bg-[#7b977e] text-white p-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FilePlus2 className="w-5 h-5 text-emerald-400" />
+                <FilePlus2 className="w-5 h-5 text-white" />
                 <h3 className="font-bold text-base">{t('manualEntryTitle')}</h3>
               </div>
               <button
                 onClick={() => setManualModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-white/80 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -509,7 +505,7 @@ export const PosView = () => {
                   placeholder={t('itemDescPlaceholder')}
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7b977e]"
                   autoFocus
                 />
               </div>
@@ -525,7 +521,7 @@ export const PosView = () => {
                     placeholder="Rate"
                     value={manualPrice}
                     onChange={(e) => setManualPrice(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7b977e]"
                   />
                 </div>
                 <div>
@@ -536,36 +532,26 @@ export const PosView = () => {
                     min="1"
                     value={manualQty}
                     onChange={(e) => setManualQty(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7b977e]"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">{t('gstRate')}</label>
-                <select
-                  value={manualTax}
-                  onChange={(e) => setManualTax(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium"
-                >
-                  <option value="0">{t('gst0')}</option>
-                  <option value="5">{t('gst5')}</option>
-                  <option value="12">{t('gst12')}</option>
-                  <option value="18">{t('gst18')}</option>
-                </select>
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-500">
+                Notice: All items in POPULAR TRADERS are billed strictly without GST.
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setManualModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   {t('cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                  className="px-5 py-2 bg-[#7b977e] hover:bg-[#67806a] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                 >
                   {t('addToBill')}
                 </button>
@@ -577,7 +563,7 @@ export const PosView = () => {
 
       {/* Multi-Payment Modal Dialog */}
       {checkoutModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
             
             {/* Header */}
@@ -605,9 +591,9 @@ export const PosView = () => {
                 <button
                   key={tab.id}
                   onClick={() => setPaymentMode(tab.id)}
-                  className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition ${
+                  className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
                     paymentMode === tab.id
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-[#7b977e] text-white shadow-xs'
                       : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
                   }`}
                 >
@@ -631,7 +617,7 @@ export const PosView = () => {
                       type="number"
                       value={tenderedAmount}
                       onChange={(e) => setTenderedAmount(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#7b977e]"
                       autoFocus
                     />
                   </div>
@@ -643,7 +629,7 @@ export const PosView = () => {
                         key={amt}
                         type="button"
                         onClick={() => setTenderedAmount(amt.toString())}
-                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-lg border border-slate-200 transition"
+                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-lg border border-slate-200 transition cursor-pointer"
                       >
                         ₹{amt}
                       </button>
@@ -653,7 +639,7 @@ export const PosView = () => {
                   {/* Change Calculation */}
                   <div className="p-3 bg-slate-100 rounded-xl flex items-center justify-between text-sm">
                     <span className="text-slate-600 font-medium">{t('changeReturn')}</span>
-                    <span className="font-extrabold text-emerald-700 text-base">
+                    <span className="font-extrabold text-[#546956] text-base">
                       ₹{changeDue.toFixed(2)}
                     </span>
                   </div>
@@ -667,8 +653,8 @@ export const PosView = () => {
                     <div className="w-40 h-40 bg-white p-2 border-2 border-slate-800 rounded-xl flex flex-col items-center justify-center relative shadow-xs">
                       <QrCode className="w-28 h-28 text-slate-900" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
-                          UPI
+                        <div className="bg-[#7b977e] text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow">
+                          POPULAR
                         </div>
                       </div>
                     </div>
@@ -697,8 +683,8 @@ export const PosView = () => {
                 <div className="space-y-3">
                   <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl text-white shadow-md">
                     <div className="flex justify-between items-center mb-6">
-                      <CreditCard className="w-6 h-6 text-emerald-400" />
-                      <span className="text-xs font-bold tracking-widest text-emerald-400">POS TERMINAL</span>
+                      <CreditCard className="w-6 h-6 text-[#7b977e]" />
+                      <span className="text-xs font-bold tracking-widest text-[#7b977e]">POPULAR TRADERS POS</span>
                     </div>
                     <div className="font-mono text-lg tracking-widest mb-2">•••• •••• •••• {cardDigits}</div>
                     <div className="flex justify-between text-xs text-slate-400">
@@ -728,9 +714,9 @@ export const PosView = () => {
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
                     <div className="font-bold flex items-center gap-1.5 mb-1">
                       <BookOpen className="w-4 h-4 text-amber-700" />
-                      <span>{t('udhar')} / Customer Khata Ledger</span>
+                      <span>{t('udhar')}</span>
                     </div>
-                    <span>Amount will be debited to customer's running credit account.</span>
+                    <span>Amount will be debited to customer's running khata account.</span>
                   </div>
 
                   <div>
@@ -740,7 +726,7 @@ export const PosView = () => {
                     <select
                       value={selectedCustomerId}
                       onChange={(e) => setSelectedCustomerId(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-[#7b977e]"
                     >
                       <option value="">{t('chooseCustomer')}</option>
                       {customers.map(c => (
@@ -778,14 +764,14 @@ export const PosView = () => {
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
               <button
                 onClick={() => setCheckoutModalOpen(false)}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
+                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
               >
                 {t('cancel')}
               </button>
 
               <button
                 onClick={handleConfirmSale}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition"
+                className="px-5 py-2.5 bg-[#7b977e] hover:bg-[#67806a] text-white rounded-xl text-xs font-bold shadow-md shadow-[#7b977e]/20 flex items-center gap-1.5 transition cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{t('confirmReceipt')}</span>
